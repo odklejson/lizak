@@ -1,0 +1,60 @@
+🧩 KROK 1 – Wgrywanie oprogramowania
+Podłącz ESP32-CAM do komputera przez adapter UART (np. z CH340).
+
+Otwórz esp32-hidden-wifi.ino w Arduino IDE.
+
+Wgraj kod na ESP32-CAM (ustaw "AI Thinker ESP32-CAM").
+
+Sprawdź przez monitor portu szeregowego, czy urządzenie uruchamia się poprawnie.
+
+🔌 KROK 2 – Podłączenie komponentów
+
+Element	GPIO	Uwaga
+Reed switch	GPIO 4	Drugi pin do GND
+Silnik wibracyjny	GPIO 14	Drugi pin do GND + kondensator
+Przycisk migawki*	GPIO 13	Opcjonalny
+Zasilanie:
+
+TP4056 VOUT+ → 5V ESP32
+
+TP4056 VOUT- → GND
+
+Bateria → do TP4056 (B+ / B-)
+
+🖨️ KROK 3 – Obudowa i montaż
+Wydrukuj model obudowa-lizak.stl z PLA lub PETG.
+
+Umieść ESP32-CAM w głównej wnęce – wycięcie na kamerę musi pasować do otworu.
+
+Przyklej baterię płasko pod modułem ESP32.
+
+Umieść TP4056 w bocznym slocie – upewnij się, że microUSB wychodzi na zewnątrz.
+
+Włóż silniczek do gniazda, przylutuj go do GPIO14 i GND.
+
+Reed switch zamontuj przy klipsie – powinien być blisko zewnętrznego magnesu.
+
+Przewody układaj wzdłuż ścianek – nie upychaj wszystkiego na siłę.
+
+Zamknij obudowę – najlepiej użyć pokrywki wciskanej lub magnetycznej.
+
+📸 KROK 4 – Testowanie
+Zbliż magnes – ESP32 powinno aktywować ukrytą sieć Wi-Fi (AP).
+
+Połącz się z Wi-Fi z komputera lub telefonu.
+
+Otwórz przeglądarkę, wejdź na 192.168.4.1/photo – powinno zadziałać!
+
+Wysyłaj komendy /vibrate?code=xyz do przetestowania wibracji.
+
+Zrób zdjęcie bez Wi-Fi → plik zapisze się na kartę SD.
+
+💡 Wskazówki:
+Używaj przewodów silikonowych, są bardziej elastyczne.
+
+Jeśli ESP32 się restartuje – dodaj kondensator 100 uF blisko 5V i GND.
+
+Do zamknięcia pokrywki możesz dodać mini magnes neodymowy lub wcisk.
+
+Kamera może patrzeć bokiem lub lekko w górę – wybierz orientację w slicerze.
+

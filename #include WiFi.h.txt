@@ -1,0 +1,203 @@
+#include <WiFi.h>
+#include <esp_camera.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <FS.h>
+#include <SD_MMC.h>
+
+// Parametry ukrytej sieci
+const char* ssid = "HP-Setup-D97";
+const char* password = "tajnehaslo";
+const int wifiChannel = 13;
+const int hideSSID = 1;
+const char* authUser = "admin";
+const char* authPass = "1234";
+
+// Czas aktywności sieci po kliknięciu (w milisekundach)
+const unsigned long activeTime = 10000; // 10 sekund
+unsigned long startMillis = 0;
+bool apActive = false;
+
+// Reed switch na GPIO 4
+const int reedPin = 4;
+// Przycisk migawki (symuluje końcówkę długopisu) na GPIO 13
+const int photoButtonPin = 13;
+
+// Pin wibratora
+const int vibroPin = 14;
+
+// Serwer
+AsyncWebServer server(80);
+
+void startCamera() {
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = 5;
+  config.pin_d1 = 18;
+  config.pin_d2 = 19;
+  config.pin_d3 = 21;
+  config.pin_d4 = 36;
+  config.pin_d5 = 39;
+  config.pin_d6 = 34;
+  config.pin_d7 = 35;
+  config.pin_xclk = 0;
+  config.pin_pclk = 22;
+  config.pin_vsync = 25;
+  config.pin_href = 23;
+  config.pin_sscb_sda = 26;
+  config.pin_sscb_scl = 27;
+  config.pin_pwdn = 32;
+  config.pin_reset = -1;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
+  config.frame_size = FRAMESIZE_VGA;
+  config.jpeg_quality = 12;
+  config.fb_count = 1;
+
+  esp_camera_init(&config);
+}
+
+void startAccessPoint() {
+  WiFi.softAP(ssid, password, wifiChannel, hideSSID);
+  WiFi.setTxPower(WIFI_POWER_MINUS_1dBm);
+  apActive = true;
+  startMillis = millis();
+  Serial.println("[ESP] Ukryta sieć aktywna przez 10 sekund");
+}
+
+void stopAccessPoint() {
+  WiFi.softAPdisconnect(true);
+  apActive = false;
+  Serial.println("[ESP] Ukryta sieć wyłączona");
+}
+
+void vibratePattern(String pattern) {
+  for (int i = 0; i < 3; i++) {
+    char c = pattern.charAt(i);
+    int duration = (c == '0') ? 100 : 400;
+    digitalWrite(vibroPin, HIGH);
+    delay(duration);
+    digitalWrite(vibroPin, LOW);
+    delay(150);
+  }
+}
+
+void savePhotoToSD(camera_fb_t * fb) {
+  if (!SD_MMC.begin()) {
+    Serial.println("[ESP] Błąd inicjalizacji SD");
+    return;
+  }
+
+  String path = "/photo_" + String(millis()) + ".jpg";
+  fs::FS &fs = SD_MMC;
+  File file = fs.open(path.c_str(), FILE_WRITE);
+
+  if (!file) {
+    Serial.println("[ESP] Nie udało się otworzyć pliku do zapisu");
+    return;
+  }
+
+  file.write(fb->buf, fb->len);
+  file.close();
+  Serial.println("[ESP] Zdjęcie zapisane na SD: " + path);
+}
+
+void takeAndSendPhoto() {
+  camera_fb_t * fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("[ESP] Nie udało się zrobić zdjęcia");
+    return;
+  }
+
+  if (WiFi.isConnected()) {
+    Serial.printf("[ESP] Zdjęcie wykonane, rozmiar: %u bajtów\n", fb->len);
+  } else {
+    savePhotoToSD(fb);
+  }
+
+  esp_camera_fb_return(fb);
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(reedPin, INPUT_PULLUP);
+  pinMode(photoButtonPin, INPUT_PULLUP);
+  pinMode(vibroPin, OUTPUT);
+
+  startCamera();
+  SD_MMC.begin();
+
+  server.on("/photo", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (!request->authenticate(authUser, authPass)) {
+      return request->requestAuthentication();
+    }
+    camera_fb_t * fb = esp_camera_fb_get();
+    request->send_P(200, "image/jpeg", (char*)fb->buf, fb->len);
+    esp_camera_fb_return(fb);
+  });
+
+  server.on("/vibrate", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (!request->authenticate(authUser, authPass)) {
+      return request->requestAuthentication();
+    }
+    if (request->hasParam("code")) {
+      String pattern = request->getParam("code")->value();
+      if (pattern.length() == 3) {
+        vibratePattern(pattern);
+        request->send(200, "text/plain", "OK: Pattern " + pattern);
+        return;
+      }
+    }
+    request->send(400, "text/plain", "Invalid or missing pattern. Use ?code=xyz");
+  });
+
+  server.on("/list", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (!request->authenticate(authUser, authPass)) {
+      return request->requestAuthentication();
+    }
+    String output = "";
+    File root = SD_MMC.open("/");
+    File file = root.openNextFile();
+    while (file) {
+      output += String(file.name()) + "\n";
+      file = root.openNextFile();
+    }
+    request->send(200, "text/plain", output);
+  });
+
+  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (!request->authenticate(authUser, authPass)) {
+      return request->requestAuthentication();
+    }
+    if (request->hasParam("file")) {
+      String filename = request->getParam("file")->value();
+      File file = SD_MMC.open("/" + filename);
+      if (!file || file.isDirectory()) {
+        request->send(404, "text/plain", "File not found");
+        return;
+      }
+      request->send(SD_MMC, "/" + filename, "application/octet-stream");
+    } else {
+      request->send(400, "text/plain", "Missing file parameter. Use ?file=filename.jpg");
+    }
+  });
+
+  server.begin();
+  Serial.println("[ESP] Gotowe do aktywacji sieci");
+}
+
+void loop() {
+  if (digitalRead(reedPin) == LOW && !apActive) {
+    startAccessPoint();
+  }
+
+  if (apActive && millis() - startMillis > activeTime) {
+    stopAccessPoint();
+  }
+
+  if (digitalRead(photoButtonPin) == LOW) {
+    takeAndSendPhoto();
+    delay(500);
+  }
+}

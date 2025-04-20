@@ -1,0 +1,31 @@
+Projekt: Długopis szpiegowski "LIZAK"
+Lista komponentów (BOM) – wersja 2025
+
+1. ESP32-CAM AI Thinker
+   Link: https://botland.com.pl/moduly-wifi/17255-modul-esp32-cam-ai-thinker-z-kamera-ov2640.html
+
+2. Bateria LiPo 3.7V 100–150 mAh
+   Link: https://botland.com.pl/akumulatory-li-pol/11273-akumulator-li-pol-redox-150mah-37v-1s-20c.html
+
+3. TP4056 microUSB (ładowarka LiPo)
+   Link: https://botland.com.pl/moduly-ladowarek-akumulatorow/1493-modul-ladowarki-li-pol-tp4056-microusb.html
+
+4. Reed Switch (kontaktron) 2x10 mm
+   Link: https://botland.com.pl/czujniki-magnetyczne-halla/7769-reed-switch-kontaktron-2x10mm.html
+
+5. Silnik wibracyjny typu coin 3.3V
+   Link: https://www.tme.eu/pl/details/vz43/mikrosilniki/western-digital/
+
+6. Kondensator 100uF (SMD 0805 lub THT)
+   Link: https://botland.com.pl/kondensatory/11295-zestaw-kondensatorow-elektrolitycznych-100szt.html
+
+7. Przewody silikonowe / dupont / goldpiny
+   Link: https://botland.com.pl/przewody-polaczeniowe/3219-zestaw-przewodow-polaczeniowych-dupont-65szt.html
+
+8. Obudowa do druku 3D (.stl)
+   Generowana ręcznie – opis konstrukcji w dokumentacji projektu.
+
+9. (Opcjonalnie) Przycisk taktylny 6x6 mm – GPIO13 (migawka)
+   Link: https://botland.com.pl/przyciski-taktylne/11852-przycisk-taktylny-6x6mm-2pin.html
+
+Szacunkowy koszt: 80–100 zł
